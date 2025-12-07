@@ -33,14 +33,73 @@ pollsRouter.put("/polls/create", async (req, res) => {
 
 pollsRouter.get("/polls/fetch", async (req, res) => {
     try {
-        const polls = await Polls.find({});
-        if (!polls)
+        const poll = await Polls.findOne({});
+        if (!poll)
             res.status(400).json({ "error": "Poll not found. Please create a poll" })
-        res.status(200).json(polls)
+        res.status(200).json(poll)
 
     } catch (error) {
         res.status(400).json(error.message)
     }
 });
+
+/**
+ * Route 3
+ * PATCH /polls/updateVotes
+ *
+ * Purpose:
+ *  - Increment the vote count for the option specified in the request body (`selectedOption`).
+ *  - Recalculate the vote percentages for all poll options based on updated vote counts.
+ *  - Update the poll document with both new counts and new percentages.
+ *
+ * Request Body:
+ *  {
+ *    "selectedOption": "option1" | "option2" | "option3" | "option4"
+ *  }
+ *
+ * Behavior:
+ *  - Validates that `selectedOption` is provided and matches one of the allowed option keys.
+ *  - Increments the vote count for the chosen option.
+ *  - Computes updated percentages for all options using:
+ *        percentage = (votes_of_option / total_votes) * 100
+ *  - Saves updated vote counts and percentages back to the database.
+ *
+ * Success Response:
+ *  Status: 200
+ *  Body: { "message": "Vote registered successfully." }
+ *
+ * Error Response:
+ *  Status: 400
+ *  Body: { "error": "<Respective error message>" }
+ */
+
+pollsRouter.patch("/polls/updateVotes", async (req, res) => {
+    const body = req.body;
+
+    if (!body?.selectedOption || !(["option1", "option2", "option3", "option4"].includes(body.selectedOption))) {
+        return res.status(400).json({ error: "Invalid option selected." });
+    }
+    const { selectedOption } = body
+    try {
+        const poll = await Polls.findOne({})
+
+        poll[`${selectedOption}Votes`] += 1;
+
+        const totalVotes = poll.option1Votes + poll.option2Votes + poll.option3Votes + poll.option4Votes;
+
+        for (let i = 1; i <= 4; i++) {
+            poll[`option${i}Percentage`] = (poll[`option${i}Votes`] / totalVotes) * 100;
+        }
+
+        await poll.save();
+
+        res.status(200).json({ message: "Vote registered successfully." })
+
+    } catch (error) {
+        res.status(400).json({ error: error.message })
+    }
+
+})
+
 
 module.exports = pollsRouter
