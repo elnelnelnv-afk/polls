@@ -23,7 +23,7 @@ pollsRouter.put("/polls/create", async (req, res) => {
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
 
-        res.status(200).json({ message: "Poll created successfully.", newPoll })
+        res.status(201).json({ message: "Poll created successfully.", newPoll })
     } catch (error) {
         res.status(400).json({
             error: error.message
@@ -35,7 +35,7 @@ pollsRouter.get("/polls/fetch", async (req, res) => {
     try {
         const poll = await Polls.findOne({});
         if (!poll)
-            res.status(400).json({ "error": "Poll not found. Please create a poll" })
+            return res.status(400).json({ "error": "Poll not found. Please create a poll" })
         res.status(200).json(poll)
 
     } catch (error) {
@@ -88,7 +88,10 @@ pollsRouter.patch("/polls/updateVotes", async (req, res) => {
         const totalVotes = poll.option1Votes + poll.option2Votes + poll.option3Votes + poll.option4Votes;
 
         for (let i = 1; i <= 4; i++) {
-            poll[`option${i}Percentage`] = (poll[`option${i}Votes`] / totalVotes) * 100;
+
+            poll[`option${i}Percentage`] = totalVotes > 0
+                ? parseFloat((poll[`option${i}Votes`] / totalVotes) * 100).toFixed(2)
+                : 0;
         }
 
         await poll.save();
